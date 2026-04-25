@@ -1,10 +1,9 @@
 import { Panel } from "./ui/Panel";
+import { OwnershipBar } from "./ui/OwnershipBar";
 import { formatUSD } from "../lib/cn";
 import type { FractionalMath } from "../types/chain";
 
-export function FractionalMathCard({ data, loading }: { data: FractionalMath | null; loading?: boolean }) {
-  const pct = data ? (data.availableShares / data.totalShares) * 100 : 0;
-
+export function FractionalMathCard({ data, mineShares = 0, loading }: { data: FractionalMath | null; mineShares?: number; loading?: boolean }) {
   return (
     <Panel
       origin="onchain"
@@ -27,15 +26,19 @@ export function FractionalMathCard({ data, loading }: { data: FractionalMath | n
 
         <div>
           <div className="flex items-baseline justify-between mb-2">
-            <span className="font-mono text-[10px] uppercase tracking-widest text-neutral-500">Available / Total</span>
+            <span className="font-mono text-[10px] uppercase tracking-widest text-neutral-500">Ownership Distribution</span>
             <span className="font-mono text-[11px] text-neutral-900">
               {data ? `${data.availableShares.toLocaleString()} / ${data.totalShares.toLocaleString()}` : "— / —"}
             </span>
           </div>
-          <div className="h-2 border border-neutral-300 bg-neutral-100 relative overflow-hidden rounded-[2px]">
-            <div className="absolute inset-y-0 left-0 bg-emerald-500" style={{ width: `${pct}%` }} />
-          </div>
-          <div className="font-mono text-[10px] text-neutral-500 mt-1">{pct.toFixed(2)}% available</div>
+          {data && (
+            <OwnershipBar
+              total={data.totalShares}
+              sold={data.totalShares - data.availableShares}
+              mine={mineShares}
+              height={10}
+            />
+          )}
         </div>
 
         <dl className="space-y-1.5">

@@ -3,7 +3,7 @@ import { cn } from "../../lib/cn";
 type Origin = "onchain" | "offchain" | "neutral";
 
 const ORIGIN: Record<Origin, string> = {
-  onchain: "bg-indigo-50/40 border-neutral-300",
+  onchain: "bg-indigo-50/40 border-neutral-300 pulse-border",
   offchain: "bg-white border-neutral-300",
   neutral: "bg-neutral-50 border-neutral-300",
 };

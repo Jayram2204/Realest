@@ -1,8 +1,10 @@
 import { cn } from "../../lib/cn";
 import { useNetworkStatus } from "../../hooks/useChain";
+import { useBlockPulse } from "../../hooks/useBlockPulse";
 
 export function NetworkIndicator({ className }: { className?: string }) {
   const { data, loading } = useNetworkStatus();
+  const { block } = useBlockPulse();
   const ok = !!data?.connected;
 
   return (
@@ -16,7 +18,7 @@ export function NetworkIndicator({ className }: { className?: string }) {
       </span>
       {data && (
         <span className="font-mono text-[10px] text-neutral-400 border-l border-neutral-300 pl-2">
-          BLK #{data.blockHeight.toLocaleString()} · {data.latencyMs}ms
+          BLK #{block.toLocaleString()} · {data.latencyMs}ms
         </span>
       )}
     </div>

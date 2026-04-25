@@ -8,10 +8,13 @@ import { PurchaseWidget } from "../components/PurchaseWidget";
 import { StatusBadge } from "../components/ui/StatusBadge";
 import { Panel } from "../components/ui/Panel";
 import { HashChip } from "../components/ui/HashChip";
-import { useProperty } from "../hooks/useChain";
+import { Identicon } from "../components/ui/Identicon";
+import { usePortfolio, useProperty } from "../hooks/useChain";
 
 export function ViewDetailsPage({ assetId, onBack }: { assetId: string | null; onBack: () => void }) {
   const { data: property, loading, error } = useProperty(assetId ?? "");
+  const { data: portfolio } = usePortfolio();
+  const mineShares = portfolio?.find((p) => p.assetId === assetId)?.shares ?? 0;
 
   if (!assetId) {
     return <EmptyState message="No asset selected. Return to the dashboard and choose a property." onBack={onBack} />;
@@ -43,7 +46,9 @@ export function ViewDetailsPage({ assetId, onBack }: { assetId: string | null; o
           />
 
           <section className="flex items-end justify-between gap-6 flex-wrap">
-            <div>
+            <div className="flex items-end gap-4">
+              <Identicon value={property.mintTxHash} size={64} className="shrink-0" />
+              <div>
               <div className="flex items-center gap-2 mb-2">
                 <StatusBadge status={property.status} />
                 <span className="font-mono text-[10px] uppercase tracking-widest text-neutral-500">
@@ -62,6 +67,7 @@ export function ViewDetailsPage({ assetId, onBack }: { assetId: string | null; o
                   <MapPin size={13} className="text-neutral-400" />
                   {property.district} · {property.zip}
                 </span>
+              </div>
               </div>
             </div>
 
@@ -95,7 +101,7 @@ export function ViewDetailsPage({ assetId, onBack }: { assetId: string | null; o
             </div>
 
             <aside className="col-span-12 lg:col-span-4 space-y-6 lg:sticky lg:top-[76px] self-start">
-              <FractionalMathCard data={property.math} />
+              <FractionalMathCard data={property.math} mineShares={mineShares} />
               <PurchaseWidget property={property} />
               <Panel origin="neutral" title="// Data Provenance">
                 <dl className="space-y-2 font-mono text-[10px]">

@@ -1,9 +1,10 @@
 import { useMemo, useState } from "react";
-import { Briefcase, Layers, TrendingUp } from "lucide-react";
+import { Briefcase, Grid3x3, Layers, Network, TrendingUp } from "lucide-react";
 import { Panel } from "../components/ui/Panel";
 import { PropertyCard } from "../components/PropertyCard";
 import { StatusBadge } from "../components/ui/StatusBadge";
 import { HashChip } from "../components/ui/HashChip";
+import { PortfolioConstellation } from "../components/PortfolioConstellation";
 import { useIdentity, usePortfolio, useProperties } from "../hooks/useChain";
 import { formatUSD } from "../lib/cn";
 import type { PropertyStatus } from "../types/chain";
@@ -15,6 +16,7 @@ export function DashboardPage({ onOpen }: { onOpen: (assetId: string) => void })
   const { data: properties, loading } = useProperties();
   const { data: portfolio } = usePortfolio();
   const [filter, setFilter] = useState<(PropertyStatus | "ALL")>("ALL");
+  const [portfolioView, setPortfolioView] = useState<"table" | "constellation">("constellation");
 
   const visible = useMemo(
     () => (properties ?? []).filter((p) => filter === "ALL" || p.status === filter),
@@ -93,18 +95,38 @@ export function DashboardPage({ onOpen }: { onOpen: (assetId: string) => void })
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-            {visible.map((p) => (
-              <PropertyCard key={p.assetId} property={p} onOpen={() => onOpen(p.assetId)} />
-            ))}
+            {visible.map((p) => {
+              const mine = portfolio?.find((pp) => pp.assetId === p.assetId)?.shares ?? 0;
+              return (
+                <PropertyCard
+                  key={p.assetId}
+                  property={p}
+                  mineShares={mine}
+                  onOpen={() => onOpen(p.assetId)}
+                />
+              );
+            })}
           </div>
         )}
       </Panel>
 
-      <Panel origin="onchain" title="// My Portfolio" subtitle="GetClientIdentity().holdings">
+      <Panel
+        origin="onchain"
+        title="// My Portfolio"
+        subtitle="GetClientIdentity().holdings"
+        action={
+          <div className="flex gap-1">
+            <ViewToggle active={portfolioView === "constellation"} onClick={() => setPortfolioView("constellation")} icon={<Network size={12} />} label="Constellation" />
+            <ViewToggle active={portfolioView === "table"} onClick={() => setPortfolioView("table")} icon={<Grid3x3 size={12} />} label="Table" />
+          </div>
+        }
+      >
         {!portfolio?.length ? (
           <div className="font-mono text-[11px] uppercase tracking-widest text-neutral-400 py-6 text-center">
             No positions
           </div>
+        ) : portfolioView === "constellation" ? (
+          <PortfolioConstellation positions={portfolio} onSelect={onOpen} />
         ) : (
           <div className="divide-y divide-neutral-200">
             <div className="grid grid-cols-[2fr_0.6fr_1fr_1fr_0.6fr_auto] gap-4 pb-2 font-mono text-[10px] uppercase tracking-widest text-neutral-500">
@@ -195,4 +217,18 @@ function Kpi({
 function greetingFor(role?: string) {
   if (!role) return "Terminal";
   return `Welcome, ${role}`;
+}
+
+function ViewToggle({ active, onClick, icon, label }: { active: boolean; onClick: () => void; icon: React.ReactNode; label: string }) {
+  return (
+    <button
+      onClick={onClick}
+      className={`inline-flex items-center gap-1.5 border rounded-[2px] px-2 py-1 font-mono text-[10px] uppercase tracking-widest ${
+        active ? "bg-neutral-900 text-white border-neutral-900" : "bg-white text-neutral-600 border-neutral-300 hover:bg-neutral-50"
+      }`}
+    >
+      {icon}
+      {label}
+    </button>
+  );
 }
