@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { ArrowLeft, MapPin, ShieldCheck } from "lucide-react";
 import { RegistryHeader } from "../components/RegistryHeader";
 import { PropertyHero } from "../components/PropertyHero";
@@ -5,6 +6,9 @@ import { PropertySpecs } from "../components/PropertySpecs";
 import { TransactionTimeline } from "../components/TransactionTimeline";
 import { FractionalMathCard } from "../components/FractionalMathCard";
 import { PurchaseWidget } from "../components/PurchaseWidget";
+import { TransactionLifecycle } from "../components/bloomberg/TransactionLifecycle";
+import { ChainOfTrust } from "../components/bloomberg/ChainOfTrust";
+import { InspectorPanel, InspectorSection, InspectorField, InspectorCard } from "../components/bloomberg/InspectorPanel";
 import { StatusBadge } from "../components/ui/StatusBadge";
 import { Panel } from "../components/ui/Panel";
 import { HashChip } from "../components/ui/HashChip";
@@ -15,6 +19,13 @@ export function ViewDetailsPage({ assetId, onBack }: { assetId: string | null; o
   const { data: property, loading, error } = useProperty(assetId ?? "");
   const { data: portfolio } = usePortfolio();
   const mineShares = portfolio?.find((p) => p.assetId === assetId)?.shares ?? 0;
+  const [inspectorOpen, setInspectorOpen] = useState(false);
+  const [inspectorContent, setInspectorContent] = useState<"contract" | "provenance" | null>(null);
+
+  const openInspector = (type: "contract" | "provenance") => {
+    setInspectorContent(type);
+    setInspectorOpen(true);
+  };
 
   if (!assetId) {
     return <EmptyState message="No asset selected. Return to the dashboard and choose a property." onBack={onBack} />;
@@ -103,6 +114,13 @@ export function ViewDetailsPage({ assetId, onBack }: { assetId: string | null; o
             <aside className="col-span-12 lg:col-span-4 space-y-6 lg:sticky lg:top-[76px] self-start">
               <FractionalMathCard data={property.math} mineShares={mineShares} />
               <PurchaseWidget property={property} />
+
+              {/* Bloomberg Feature: Transaction Lifecycle */}
+              <TransactionLifecycle transactionId={property.assetId} />
+
+              {/* Bloomberg Feature: Chain of Trust */}
+              <ChainOfTrust address={property.mintTxHash} assetId={property.assetId} />
+
               <Panel origin="neutral" title="// Data Provenance">
                 <dl className="space-y-2 font-mono text-[10px]">
                   <Row label="Channel" value={property.channel} />
@@ -111,10 +129,81 @@ export function ViewDetailsPage({ assetId, onBack }: { assetId: string | null; o
                   <div className="pt-2 border-t border-neutral-300">
                     <HashChip value={property.mintTxHash} label="MINT" link />
                   </div>
+                  <div className="pt-2 space-y-2">
+                    <button
+                      onClick={() => openInspector("contract")}
+                      className="w-full border border-indigo-300 bg-indigo-50 rounded-[2px] px-3 py-2 font-mono text-[10px] uppercase tracking-widest text-indigo-700 hover:bg-indigo-100 transition-colors"
+                    >
+                      Inspect Contract →
+                    </button>
+                    <button
+                      onClick={() => openInspector("provenance")}
+                      className="w-full border border-neutral-300 bg-white rounded-[2px] px-3 py-2 font-mono text-[10px] uppercase tracking-widest text-neutral-700 hover:bg-neutral-50 transition-colors"
+                    >
+                      View Full Provenance →
+                    </button>
+                  </div>
                 </dl>
               </Panel>
             </aside>
           </div>
+
+          {/* Bloomberg Feature: Inspector Panel */}
+          <InspectorPanel
+            isOpen={inspectorOpen}
+            onClose={() => setInspectorOpen(false)}
+            title={inspectorContent === "contract" ? "Smart Contract Details" : "Full Provenance Chain"}
+            subtitle={property.assetId}
+            breadcrumbs={[
+              { label: "Asset Details" },
+              { label: inspectorContent === "contract" ? "Contract" : "Provenance" },
+            ]}
+          >
+            {inspectorContent === "contract" ? (
+              <>
+                <InspectorSection title="Contract Information">
+                  <InspectorField label="Contract Address" value={property.mintTxHash} mono link={`https://etherscan.io/address/${property.mintTxHash}`} />
+                  <InspectorField label="Chaincode" value="real-estate-cc@v2.1.4" mono />
+                  <InspectorField label="Channel" value={property.channel} />
+                  <InspectorField label="Deployed" value={new Date(property.mintedAt).toLocaleString()} />
+                </InspectorSection>
+
+                <InspectorSection title="Contract Methods">
+                  <div className="space-y-2">
+                    {["transferOwnership", "updateMetadata", "mint", "burn", "approve"].map((method) => (
+                      <InspectorCard key={method}>
+                        <div className="font-mono text-[11px] text-neutral-900 mb-1">{method}()</div>
+                        <div className="font-sans text-[10px] text-neutral-500">Available to authorized callers</div>
+                      </InspectorCard>
+                    ))}
+                  </div>
+                </InspectorSection>
+              </>
+            ) : (
+              <>
+                <InspectorSection title="Provenance Timeline">
+                  <div className="space-y-3">
+                    {property.history.map((event, idx) => (
+                      <InspectorCard key={idx} accent={event.action === "MINT" ? "emerald" : undefined}>
+                        <div className="flex items-start justify-between mb-2">
+                          <span className="font-mono text-[10px] uppercase tracking-widest text-neutral-600">{event.action}</span>
+                          <span className="font-mono text-[9px] text-neutral-500">{new Date(event.timestamp).toLocaleString()}</span>
+                        </div>
+                        <div className="font-sans text-[11px] text-neutral-900 mb-1">{event.details}</div>
+                        <div className="font-mono text-[10px] text-indigo-600 break-all">TX: {event.txHash}</div>
+                      </InspectorCard>
+                    ))}
+                  </div>
+                </InspectorSection>
+
+                <InspectorSection title="Metadata Source">
+                  <InspectorField label="IPFS CID" value={property.metadataCid} mono link={`https://ipfs.io/ipfs/${property.metadataCid}`} />
+                  <InspectorField label="Storage" value="Arweave + IPFS (redundant)" />
+                  <InspectorField label="Last Update" value={new Date(property.mintedAt).toLocaleString()} />
+                </InspectorSection>
+              </>
+            )}
+          </InspectorPanel>
         </>
       )}
     </div>

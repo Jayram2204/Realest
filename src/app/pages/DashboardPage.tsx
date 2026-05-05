@@ -1,10 +1,13 @@
 import { useMemo, useState } from "react";
-import { Briefcase, Grid3x3, Layers, Network, TrendingUp } from "lucide-react";
+import { Briefcase, Grid3x3, Layers, Network, TrendingUp, PanelRight } from "lucide-react";
 import { Panel } from "../components/ui/Panel";
 import { PropertyCard } from "../components/PropertyCard";
 import { StatusBadge } from "../components/ui/StatusBadge";
 import { HashChip } from "../components/ui/HashChip";
 import { PortfolioConstellation } from "../components/PortfolioConstellation";
+import { ClaimableEarnings } from "../components/bloomberg/ClaimableEarnings";
+import { FinancialTerminal } from "../components/bloomberg/FinancialTerminal";
+import { YieldCalculator } from "../components/bloomberg/YieldCalculator";
 import { useIdentity, usePortfolio, useProperties } from "../hooks/useChain";
 import { formatUSD } from "../lib/cn";
 import type { PropertyStatus } from "../types/chain";
@@ -17,6 +20,7 @@ export function DashboardPage({ onOpen }: { onOpen: (assetId: string) => void })
   const { data: portfolio } = usePortfolio();
   const [filter, setFilter] = useState<(PropertyStatus | "ALL")>("ALL");
   const [portfolioView, setPortfolioView] = useState<"table" | "constellation">("constellation");
+  const [showFinancialPanel, setShowFinancialPanel] = useState(true);
 
   const visible = useMemo(
     () => (properties ?? []).filter((p) => filter === "ALL" || p.status === filter),
@@ -31,16 +35,32 @@ export function DashboardPage({ onOpen }: { onOpen: (assetId: string) => void })
   }, [properties, portfolio]);
 
   return (
-    <div className="px-6 py-6 space-y-6">
-      <div>
-        <h1 className="font-sans font-semibold text-[26px] text-neutral-900 tracking-tight">
-          {greetingFor(identity.data?.role)}
-        </h1>
-        <p className="font-mono text-[11px] uppercase tracking-widest text-neutral-500 mt-1">
-          {identity.data?.mspId ?? "—"} · ABAC:{" "}
-          {(identity.data?.abacAttributes ?? []).join(" · ")}
-        </p>
+    <div className="px-6 py-6">
+      <div className="flex items-start justify-between gap-6 mb-6">
+        <div className="flex-1">
+          <h1 className="font-sans font-semibold text-[26px] text-neutral-900 tracking-tight">
+            {greetingFor(identity.data?.role)}
+          </h1>
+          <p className="font-mono text-[11px] uppercase tracking-widest text-neutral-500 mt-1">
+            {identity.data?.mspId ?? "—"} · ABAC:{" "}
+            {(identity.data?.abacAttributes ?? []).join(" · ")}
+          </p>
+        </div>
+        <button
+          onClick={() => setShowFinancialPanel(!showFinancialPanel)}
+          className={`flex items-center gap-2 border rounded-[2px] px-3 py-2 font-mono text-[10px] uppercase tracking-widest transition-colors ${
+            showFinancialPanel
+              ? "bg-neutral-900 text-white border-neutral-900"
+              : "bg-white text-neutral-600 border-neutral-300 hover:bg-neutral-50"
+          }`}
+        >
+          <PanelRight size={13} />
+          Financial Panel
+        </button>
       </div>
+
+      <div className={`grid ${showFinancialPanel ? "grid-cols-[1fr_360px]" : "grid-cols-1"} gap-6`}>
+        <div className="space-y-6">
 
       <div className="grid grid-cols-3 gap-4">
         <Kpi
@@ -164,29 +184,46 @@ export function DashboardPage({ onOpen }: { onOpen: (assetId: string) => void })
         )}
       </Panel>
 
-      <Panel origin="onchain" title="// Recent Registry Mints" subtitle="listProperties()">
-        <div className="space-y-2">
-          {(properties ?? []).slice(0, 4).map((p) => (
-            <div
-              key={p.assetId}
-              className="grid grid-cols-[auto_2fr_1fr_auto] items-center gap-4 border border-neutral-200 bg-white px-3 py-2 rounded-[2px]"
-            >
-              <StatusBadge status={p.status} />
-              <div className="min-w-0">
-                <div className="font-sans text-[12px] text-neutral-900 truncate">{p.title}</div>
-                <div className="font-mono text-[10px] text-neutral-500">{p.assetId}</div>
-              </div>
-              <HashChip value={p.mintTxHash} label="MINT" />
-              <button
-                onClick={() => onOpen(p.assetId)}
-                className="font-mono text-[10px] uppercase tracking-widest text-indigo-600 hover:underline"
+        <Panel origin="onchain" title="// Recent Registry Mints" subtitle="listProperties()">
+          <div className="space-y-2">
+            {(properties ?? []).slice(0, 4).map((p) => (
+              <div
+                key={p.assetId}
+                className="grid grid-cols-[auto_2fr_1fr_auto] items-center gap-4 border border-neutral-200 bg-white px-3 py-2 rounded-[2px]"
               >
-                Inspect →
-              </button>
-            </div>
-          ))}
+                <StatusBadge status={p.status} />
+                <div className="min-w-0">
+                  <div className="font-sans text-[12px] text-neutral-900 truncate">{p.title}</div>
+                  <div className="font-mono text-[10px] text-neutral-500">{p.assetId}</div>
+                </div>
+                <HashChip value={p.mintTxHash} label="MINT" />
+                <button
+                  onClick={() => onOpen(p.assetId)}
+                  className="font-mono text-[10px] uppercase tracking-widest text-indigo-600 hover:underline"
+                >
+                  Inspect →
+                </button>
+              </div>
+            ))}
+          </div>
+        </Panel>
+
+        {/* Bloomberg Feature: Claimable Earnings & Yield Calculator */}
+        {!showFinancialPanel && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <ClaimableEarnings />
+            <YieldCalculator />
+          </div>
+        )}
         </div>
-      </Panel>
+
+        {/* Bloomberg Feature: Financial Terminal Sidebar */}
+        {showFinancialPanel && (
+          <aside className="space-y-4">
+            <FinancialTerminal onAction={(action) => console.log("Action:", action)} />
+          </aside>
+        )}
+      </div>
     </div>
   );
 }
